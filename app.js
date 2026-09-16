@@ -6,7 +6,7 @@ const CONFIG = {
   UNIT: "Bagian Umum, Protokol dan Komunikasi Pimpinan",
   // URL Web App untuk pencatatan Log.
   // Isi setelah Code.gs dideploy sebagai Web App.
-  LOG_API_URL: "PASTE_APPS_SCRIPT_WEB_APP_URL_HERE"
+  LOG_API_URL: "https://script.google.com/macros/s/AKfycbz2Bup5im_FogvdG148QU0pLRJUjl-a3SYhHlC7cJfMtp3KBFE08Fp9q4E998FdNVCZqg/exec"
 };
 
 const $ = s => document.querySelector(s);
@@ -343,20 +343,66 @@ async function preparePdfPages(){
   return [...document.querySelectorAll("#pdfPreview .pdf-page")];
 }
 
-async function createPdf(){
-  const pages=await preparePdfPages();
-  const {jsPDF}=window.jspdf;
-  const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
-  for(let i=0;i<pages.length;i++){
-    const canvas=await html2canvas(pages[i],{
+async function capturePdfPage(page){
+  // Render setiap halaman dalam wadah A4 yang terpisah agar html2canvas
+  // tidak mengambil posisi/layout halaman sebelumnya saat halaman kedua diproses.
+  const stage=document.createElement("div");
+  stage.style.cssText=[
+    "position:fixed",
+    "left:-10000px",
+    "top:0",
+    "width:210mm",
+    "height:297mm",
+    "overflow:hidden",
+    "background:#fff",
+    "z-index:-1",
+    "pointer-events:none"
+  ].join(";");
+
+  const clone=page.cloneNode(true);
+  clone.style.width="210mm";
+  clone.style.height="297mm";
+  clone.style.minHeight="297mm";
+  clone.style.margin="0";
+  clone.style.padding="15mm";
+  clone.style.boxSizing="border-box";
+  clone.style.transform="none";
+  clone.style.boxShadow="none";
+  clone.style.position="relative";
+  clone.style.left="0";
+  clone.style.top="0";
+
+  stage.appendChild(clone);
+  document.body.appendChild(stage);
+
+  try{
+    await waitForImages(clone);
+    // Paksa layout dihitung ulang sebelum screenshot.
+    void clone.offsetHeight;
+    return await html2canvas(clone,{
       scale:2,
       useCORS:true,
       allowTaint:false,
       backgroundColor:"#ffffff",
       logging:false,
       imageTimeout:10000,
-      removeContainer:true
+      removeContainer:true,
+      width:clone.offsetWidth,
+      height:clone.offsetHeight,
+      scrollX:0,
+      scrollY:0
     });
+  }finally{
+    stage.remove();
+  }
+}
+
+async function createPdf(){
+  const pages=await preparePdfPages();
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
+  for(let i=0;i<pages.length;i++){
+    const canvas=await capturePdfPage(pages[i]);
     if(i) pdf.addPage();
     const imgData=canvas.toDataURL("image/jpeg",0.92);
     pdf.addImage(imgData,"JPEG",0,0,210,297,"FAST");
