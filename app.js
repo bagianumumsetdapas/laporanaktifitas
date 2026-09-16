@@ -26,8 +26,18 @@ document.addEventListener("DOMContentLoaded", init);
 async function init(){
   loadTheme();
   bind();
-  state.employees = await api("getEmployees");
+
+  // Apps Script mengembalikan { ok:true, data:[...] },
+  // sehingga yang dimasukkan ke state.employees harus bagian "data".
+  const response = await api("getEmployees");
+  state.employees = Array.isArray(response?.data) ? response.data : [];
+
   populateEmployees();
+
+  if(!state.employees.length){
+    toast("Data pegawai belum berhasil dimuat. Periksa koneksi/API Apps Script.");
+  }
+
   await restoreDraftIfPossible();
 }
 
@@ -49,6 +59,9 @@ function bind(){
 function populateEmployees(){
   const s=$("#employeeSelect");
   s.innerHTML='<option value="">Pilih Nama Pegawai</option>';
+
+  if(!Array.isArray(state.employees)) state.employees=[];
+
   state.employees.forEach(e=>{
     const o=document.createElement("option");
     o.value=e.no; o.textContent=e.nama;
@@ -305,8 +318,20 @@ async function api(action,data={}){
   if(!CONFIG.API_URL||CONFIG.API_URL.startsWith("PASTE_")){toast("Isi API_URL Apps Script di app.js terlebih dahulu.");return null}
   try{
     const url=new URL(CONFIG.API_URL);url.searchParams.set("action",action);Object.entries(data).forEach(([k,v])=>url.searchParams.set(k,v??""));
-    const r=await fetch(url.toString(),{method:"GET"});return await r.json();
-  }catch(e){console.error(e);toast("Tidak dapat terhubung ke server.");return null}
+    const r=await fetch(url.toString(),{method:"GET",cache:"no-store"});
+    const payload=await r.json();
+
+    if(payload?.ok===false){
+      console.error("Apps Script API:",payload.message);
+      toast(payload.message || "API Apps Script mengembalikan error.");
+    }
+
+    return payload;
+  }catch(e){
+    console.error("API error:",e);
+    toast("Tidak dapat terhubung ke server Apps Script.");
+    return null;
+  }
 }
 function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("show"),3000)}
 function showLoading(v,text="Memproses..."){$("#loading").classList.toggle("hidden",!v);$("#loading span").textContent=text}
