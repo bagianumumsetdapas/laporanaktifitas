@@ -27,15 +27,13 @@ async function init(){
   loadTheme();
   bind();
 
-  // Apps Script mengembalikan { ok:true, data:[...] },
-  // sehingga yang dimasukkan ke state.employees harus bagian "data".
   const response = await api("getEmployees");
   state.employees = Array.isArray(response?.data) ? response.data : [];
 
   populateEmployees();
 
   if(!state.employees.length){
-    toast("Data pegawai belum berhasil dimuat. Periksa koneksi/API Apps Script.");
+    toast("Data pegawai belum berhasil dimuat. Periksa Web App Apps Script.");
   }
 
   await restoreDraftIfPossible();
@@ -59,9 +57,7 @@ function bind(){
 function populateEmployees(){
   const s=$("#employeeSelect");
   s.innerHTML='<option value="">Pilih Nama Pegawai</option>';
-
   if(!Array.isArray(state.employees)) state.employees=[];
-
   state.employees.forEach(e=>{
     const o=document.createElement("option");
     o.value=e.no; o.textContent=e.nama;
@@ -314,24 +310,67 @@ function roman(n){return ["","I","II","III","IV"][n]}
 function lastDayOfMonth(m,y){const d=new Date(y,m,0);return d.toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"})}
 function safeName(s){return String(s||"Pegawai").replace(/[\\/:*?"<>|]/g," ").replace(/\s+/g," ").trim()}
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-async function api(action,data={}){
-  if(!CONFIG.API_URL||CONFIG.API_URL.startsWith("PASTE_")){toast("Isi API_URL Apps Script di app.js terlebih dahulu.");return null}
-  try{
-    const url=new URL(CONFIG.API_URL);url.searchParams.set("action",action);Object.entries(data).forEach(([k,v])=>url.searchParams.set(k,v??""));
-    const r=await fetch(url.toString(),{method:"GET",cache:"no-store"});
-    const payload=await r.json();
-
-    if(payload?.ok===false){
-      console.error("Apps Script API:",payload.message);
-      toast(payload.message || "API Apps Script mengembalikan error.");
+function api(action,data={}){
+  return new Promise((resolve,reject)=>{
+    if(!CONFIG.API_URL || CONFIG.API_URL.startsWith("PASTE_")){
+      toast("API_URL Apps Script belum diisi.");
+      resolve(null);
+      return;
     }
 
-    return payload;
-  }catch(e){
-    console.error("API error:",e);
-    toast("Tidak dapat terhubung ke server Apps Script.");
-    return null;
-  }
+    const callbackName = "__la_jsonp_" + Date.now() + "_" +
+      Math.random().toString(36).slice(2);
+
+    const script = document.createElement("script");
+    const url = new URL(CONFIG.API_URL);
+
+    url.searchParams.set("action", action);
+    url.searchParams.set("callback", callbackName);
+    url.searchParams.set("_", Date.now());
+
+    Object.entries(data || {}).forEach(([k,v])=>{
+      url.searchParams.set(k, v ?? "");
+    });
+
+    let finished = false;
+
+    const cleanup = ()=>{
+      if(finished) return;
+      finished = true;
+      clearTimeout(timer);
+      delete window[callbackName];
+      script.remove();
+    };
+
+    window[callbackName] = payload=>{
+      cleanup();
+
+      if(!payload || payload.ok === false){
+        const message = payload?.message || "Apps Script mengembalikan error.";
+        console.error("Apps Script API:", message, payload);
+        toast(message);
+      }
+
+      resolve(payload || null);
+    };
+
+    script.onerror = ()=>{
+      cleanup();
+      console.error("JSONP gagal:", url.toString());
+      toast("Tidak dapat terhubung ke Apps Script. Pastikan Web App memakai URL /exec dan aksesnya sesuai.");
+      resolve(null);
+    };
+
+    const timer = setTimeout(()=>{
+      cleanup();
+      console.error("JSONP timeout:", url.toString());
+      toast("Koneksi Apps Script timeout.");
+      resolve(null);
+    }, 15000);
+
+    script.src = url.toString();
+    document.head.appendChild(script);
+  });
 }
 function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("show"),3000)}
 function showLoading(v,text="Memproses..."){$("#loading").classList.toggle("hidden",!v);$("#loading span").textContent=text}
