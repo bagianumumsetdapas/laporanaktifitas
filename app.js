@@ -279,9 +279,44 @@ function driveImageData(id){
   });
 }
 
+function loadScriptOnce(src, test){
+  return new Promise((resolve,reject)=>{
+    if(test()) return resolve();
+    const s=document.createElement("script");
+    s.src=src;
+    s.async=true;
+    s.onload=()=>test()?resolve():reject(new Error("Library termuat tetapi tidak tersedia: "+src));
+    s.onerror=()=>reject(new Error("Gagal memuat library: "+src));
+    document.head.appendChild(s);
+  });
+}
+
 async function ensurePdfLibraries(){
-  if(!window.html2canvas) throw new Error("html2canvas belum termuat. Periksa koneksi internet lalu muat ulang halaman.");
-  if(!window.jspdf || !window.jspdf.jsPDF) throw new Error("jsPDF belum termuat. Periksa koneksi internet lalu muat ulang halaman.");
+  if(!window.html2canvas){
+    const htmlSources=[
+      "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
+      "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js",
+      "https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"
+    ];
+    let loaded=false;
+    for(const src of htmlSources){
+      try{await loadScriptOnce(src,()=>!!window.html2canvas);loaded=true;break}catch(e){console.warn(e)}
+    }
+    if(!loaded) throw new Error("html2canvas belum termuat. Periksa koneksi internet lalu muat ulang halaman.");
+  }
+
+  if(!window.jspdf || !window.jspdf.jsPDF){
+    const pdfSources=[
+      "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+      "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js",
+      "https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"
+    ];
+    let loaded=false;
+    for(const src of pdfSources){
+      try{await loadScriptOnce(src,()=>!!(window.jspdf&&window.jspdf.jsPDF));loaded=true;break}catch(e){console.warn(e)}
+    }
+    if(!loaded) throw new Error("jsPDF belum termuat. Periksa koneksi internet atau coba muat ulang halaman.");
+  }
 }
 
 async function waitForImages(root){
