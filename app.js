@@ -1,12 +1,12 @@
 const CONFIG = {
-  // Gunakan URL Google Sheet yang dibagikan user.
+  // Sumber data identitas pegawai.
   SHEET_URL: "https://docs.google.com/spreadsheets/d/1nOKzfztcljU4GJg3ekf9LfBN1V2sGi3bFgZTN0DxX1Y/edit?usp=sharing",
   SHEET_NAME: "DB",
   YEAR: 2026,
   UNIT: "Bagian Umum, Protokol dan Komunikasi Pimpinan",
-  // URL Web App Apps Script untuk pencatatan Log.
+  // URL Web App untuk pencatatan Log.
   // Isi setelah Code.gs dideploy sebagai Web App.
-  LOG_API_URL: "https://script.google.com/macros/s/AKfycbyFd44Ra230wPktAsQ76N040fk6Vq4m1nh33BNAEP1OafwAcNUisTpaX5TR0xIPmIyr3w/exec"
+  LOG_API_URL: "https://script.google.com/macros/s/AKfycbz2Bup5im_FogvdG148QU0pLRJUjl-a3SYhHlC7cJfMtp3KBFE08Fp9q4E998FdNVCZqg/exec"
 };
 
 const $ = s => document.querySelector(s);
@@ -19,7 +19,7 @@ async function init(){
   const rows = await loadSheetDirect();
   state.employees = rows;
   populateEmployees();
-  if(!rows.length) toast("Data pegawai belum terbaca. Pastikan Sheet DB dapat diakses publik.");
+  if(!rows.length) toast("Data pegawai belum berhasil dimuat. Periksa koneksi sumber data.");
   await restoreDraftIfPossible();
 }
 
@@ -32,10 +32,8 @@ function bind(){
   $("#backBtn").onclick=()=>showStep("startStep");
   $("#previewBtn").onclick=previewReport;
   $("#editBtn").onclick=()=>showStep("reportStep");
-  $("#printBtn").onclick=async()=>{await writeLog("Cetak");window.print();};
-  $("#downloadBtn").onclick=downloadPDF;
+  $("#downloadBtn")?.addEventListener("click", downloadPDF);
   $("#shareBtn").onclick=sharePDF;
-  $("#whatsappBtn").onclick=whatsappShare;
 }
 
 function sheetId(url){
@@ -83,10 +81,10 @@ function loadSheetDirect(){
 
     const query=encodeURIComponent(`select A,B,C,D,E,F,G,H`);
     script.src=`${url}?sheet=${encodeURIComponent(CONFIG.SHEET_NAME)}&tqx=responseHandler:${cb}&tq=${query}&_=${Date.now()}`;
-    script.onerror=()=>{cleanup();toast("Google Sheet tidak dapat diakses. Ubah akses menjadi Siapa saja yang memiliki link → Pelihat.");resolve([])};
+    script.onerror=()=>{cleanup();toast("Data pegawai tidak dapat dimuat. Periksa koneksi sumber data.");resolve([])};
     document.head.appendChild(script);
 
-    const timer=setTimeout(()=>{cleanup();toast("Koneksi Google Sheet timeout.");resolve([])},15000);
+    const timer=setTimeout(()=>{cleanup();toast("Koneksi data timeout. Silakan coba lagi.");resolve([])},15000);
   });
 }
 
