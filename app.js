@@ -6,7 +6,7 @@ const CONFIG = {
   UNIT: "Bagian Umum, Protokol dan Komunikasi Pimpinan",
   // URL Web App untuk pencatatan Log.
   // Isi setelah Code.gs dideploy sebagai Web App.
-  LOG_API_URL: "https://script.google.com/macros/s/AKfycbz2Bup5im_FogvdG148QU0pLRJUjl-a3SYhHlC7cJfMtp3KBFE08Fp9q4E998FdNVCZqg/exec"
+  LOG_API_URL: "PASTE_APPS_SCRIPT_WEB_APP_URL_HERE"
 };
 
 const $ = s => document.querySelector(s);
@@ -279,57 +279,125 @@ function driveImageData(id){
   });
 }
 
+async function ensurePdfLibraries(){
+  if(!window.html2canvas) throw new Error("html2canvas belum termuat. Periksa koneksi internet lalu muat ulang halaman.");
+  if(!window.jspdf || !window.jspdf.jsPDF) throw new Error("jsPDF belum termuat. Periksa koneksi internet lalu muat ulang halaman.");
+}
+
+async function waitForImages(root){
+  const imgs=[...root.querySelectorAll("img")];
+  await Promise.all(imgs.map(img=>{
+    if(img.complete && img.naturalWidth>0) return Promise.resolve();
+    return new Promise(resolve=>{
+      let done=false;
+      const finish=()=>{if(done)return;done=true;resolve()};
+      img.addEventListener("load",finish,{once:true});
+      img.addEventListener("error",finish,{once:true});
+      setTimeout(finish,5000);
+    });
+  }));
+}
+
+async function preparePdfPages(){
+  await ensurePdfLibraries();
+  if(!state.employee || !state.month || !state.weeks.length) throw new Error("Data laporan belum lengkap.");
+  // TTD tidak boleh membuat proses ekspor gagal. Jika tidak tersedia, PDF tetap dibuat.
+  try{ await Promise.race([loadTTD(),new Promise(r=>setTimeout(r,5000))]); }catch(e){console.warn("TTD dilewati:",e)}
+  buildPreview();
+  await waitForImages($("#pdfPreview"));
+  return [...document.querySelectorAll("#pdfPreview .pdf-page")];
+}
+
+async function createPdf(){
+  const pages=await preparePdfPages();
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
+  for(let i=0;i<pages.length;i++){
+    const canvas=await html2canvas(pages[i],{
+      scale:2,
+      useCORS:true,
+      allowTaint:false,
+      backgroundColor:"#ffffff",
+      logging:false,
+      imageTimeout:10000,
+      removeContainer:true
+    });
+    if(i) pdf.addPage();
+    const imgData=canvas.toDataURL("image/jpeg",0.92);
+    pdf.addImage(imgData,"JPEG",0,0,210,297,"FAST");
+  }
+  return pdf;
+}
+
 async function downloadPDF(){
-  await loadTTD();buildPreview();showLoading(true,"Membuat PDF...");
+  showLoading(true,"Membuat PDF...");
   try{
-    const {jsPDF}=window.jspdf,pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
-    const pages=[...document.querySelectorAll(".pdf-page")];
-    for(let i=0;i<pages.length;i++){
-      const canvas=await html2canvas(pages[i],{scale:2,useCORS:true,backgroundColor:"#fff"});
-      if(i)pdf.addPage();
-      pdf.addImage(canvas.toDataURL("image/jpeg",.94),"JPEG",0,0,210,297);
-    }
+    const pdf=await createPdf();
     const filename=`${safeName(state.employee.nama)} - ${monthName(state.month)} ${CONFIG.YEAR}.pdf`;
     pdf.save(filename);
     const logged=await writeLog("PDF Diunduh");
     $("#exportNote").textContent=`Dokumen ${filename} berhasil dibuat.${logged?" Aktivitas sudah tercatat di Log.":""}`;
     toast(logged?"PDF berhasil diunduh dan dicatat di Log.":"PDF berhasil diunduh.");
-  }catch(e){console.error(e);toast("PDF gagal dibuat. Coba lagi")}finally{showLoading(false)}
+  }catch(e){
+    console.error("Ekspor PDF:",e);
+    toast(e.message||"PDF gagal dibuat. Coba lagi.");
+  }finally{showLoading(false)}
 }
-async function makePDFBlob(){await loadTTD();buildPreview();const {jsPDF}=window.jspdf,pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});const pages=[...document.querySelectorAll(".pdf-page")];for(let i=0;i<pages.length;i++){const canvas=await html2canvas(pages[i],{scale:2,useCORS:true,backgroundColor:"#fff"});if(i)pdf.addPage();pdf.addImage(canvas.toDataURL("image/jpeg",.94),"JPEG",0,0,210,297)}return{blob:pdf.output("blob"),filename:`${safeName(state.employee.nama)} - ${monthName(state.month)} ${CONFIG.YEAR}.pdf`}}
+
+async function makePDFBlob(){
+  const pdf=await createPdf();
+  return {
+    blob:pdf.output("blob"),
+    filename:`${safeName(state.employee.nama)} - ${monthName(state.month)} ${CONFIG.YEAR}.pdf`
+  };
+}
+
 async function sharePDF(){
-  showLoading(true,"Menyiapkan PDF...");
+  showLoading(true,"Menyiapkan PDF untuk dibagikan...");
   try{
     const x=await makePDFBlob();
     const file=new File([x.blob],x.filename,{type:"application/pdf"});
     const shareData={
       title:"Laporan Aktifitas Pegawai",
-      text:`Laporan ${state.employee.nama} - ${monthName(state.month)} ${CONFIG.YEAR}`,
+      text:`Laporan Aktifitas Pegawai\nNama: ${state.employee.nama}\nPeriode: ${monthName(state.month)} ${CONFIG.YEAR}`,
       files:[file]
     };
+
+    // Android/iPhone dan browser yang mendukung berbagi file: PDF langsung masuk menu Bagikan.
     if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
       await navigator.share(shareData);
       await writeLog("PDF Dibagikan");
-      toast("PDF siap dibagikan.");
+      toast("PDF berhasil dibagikan.");
       return;
     }
-    // Browser yang tidak mendukung file sharing: unduh PDF, lalu buka menu berbagi teks.
+
+    // Desktop/browser tanpa Web Share file: simpan PDF terlebih dahulu,
+    // lalu buka WhatsApp dengan keterangan agar pengguna tinggal melampirkan PDF.
+    const url=URL.createObjectURL(x.blob);
     const a=document.createElement("a");
-    a.href=URL.createObjectURL(x.blob);a.download=x.filename;
-    document.body.appendChild(a);a.click();a.remove();
-    setTimeout(()=>URL.revokeObjectURL(a.href),30000);
-    const text=encodeURIComponent(`Laporan Aktifitas Pegawai\nNama: ${state.employee.nama}\nPeriode: ${monthName(state.month)} ${CONFIG.YEAR}\nPDF sudah diunduh, silakan lampirkan ke WhatsApp/Drive/email.`);
-    if(navigator.share){
-      try{await navigator.share({title:"Laporan Aktifitas Pegawai",text})}catch(e){if(e.name!=="AbortError")console.warn(e)}
-    }else{
-      window.open(`https://wa.me/?text=${text}`,"_blank");
-    }
+    a.href=url;
+    a.download=x.filename;
+    a.style.display="none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+
+    const text=encodeURIComponent(`Laporan Aktifitas Pegawai\nNama: ${state.employee.nama}\nPeriode: ${monthName(state.month)} ${CONFIG.YEAR}\n\nPDF sudah disiapkan. Silakan lampirkan file PDF yang baru diunduh.`);
+    const waUrl=`https://wa.me/?text=${text}`;
+    const wa=window.open(waUrl,"_blank","noopener,noreferrer");
+    if(!wa) window.location.href=waUrl;
+
     await writeLog("PDF Dibagikan");
-    toast("PDF sudah diunduh dan siap dibagikan.");
+    toast("PDF berhasil dibuat dan disiapkan untuk dibagikan.");
   }catch(e){
-    if(e.name!=="AbortError"){console.error(e);toast("Gagal menyiapkan PDF untuk dibagikan.")}}
-  finally{showLoading(false)}
+    if(e.name!=="AbortError"){
+      console.error("Bagikan PDF:",e);
+      toast(e.message||"Gagal menyiapkan PDF untuk dibagikan.");
+    }
+  }finally{showLoading(false)}
 }
+
 function showStep(id){["startStep","reportStep","previewStep"].forEach(x=>$("#"+x).classList.toggle("hidden",x!==id));window.scrollTo({top:0,behavior:"smooth"})}
 function loadTheme(){if(localStorage.getItem("la-theme")==="dark"){document.body.classList.add("dark");$("#themeBtn").textContent="☀"}}
 function toggleTheme(){document.body.classList.toggle("dark");localStorage.setItem("la-theme",document.body.classList.contains("dark")?"dark":"light");$("#themeBtn").textContent=document.body.classList.contains("dark")?"☀":"☾"}
