@@ -1,6 +1,6 @@
 /* Laporan Aktifitas Pegawai - Frontend Vercel */
 const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbxB66ZnG9mASzLYUUWLxH4bEjV_3EXxJRmVrWpYnEisOIMYcJX5Zyr8O3F5n-UWT2DpJA/exec",
+  API_URL: "https://script.google.com/macros/s/AKfycbyFd44Ra230wPktAsQ76N040fk6Vq4m1nh33BNAEP1OafwAcNUisTpaX5TR0xIPmIyr3w/exec",
   YEAR: 2026,
   UNIT: "Bagian Umum, Protokol dan Komunikasi Pimpinan"
 };
