@@ -344,41 +344,34 @@ async function preparePdfPages(){
 }
 
 async function capturePdfPage(page){
-  // Render setiap halaman dalam wadah A4 yang terpisah agar html2canvas
-  // tidak mengambil posisi/layout halaman sebelumnya saat halaman kedua diproses.
+  // Hanya untuk proses ekspor: buat salinan satu halaman yang benar-benar
+  // terisolasi agar html2canvas tidak terpengaruh halaman lain di preview.
   const stage=document.createElement("div");
   stage.style.cssText=[
-    "position:fixed",
-    "left:-10000px",
+    "position:absolute",
+    "left:0",
     "top:0",
     "width:210mm",
     "height:297mm",
     "overflow:hidden",
     "background:#fff",
-    "z-index:-1",
-    "pointer-events:none"
+    "visibility:hidden",
+    "pointer-events:none",
+    "z-index:999999"
   ].join(";");
 
   const clone=page.cloneNode(true);
-  clone.style.width="210mm";
-  clone.style.height="297mm";
-  clone.style.minHeight="297mm";
-  clone.style.margin="0";
-  clone.style.padding="15mm";
-  clone.style.boxSizing="border-box";
-  clone.style.transform="none";
-  clone.style.boxShadow="none";
-  clone.style.position="relative";
-  clone.style.left="0";
-  clone.style.top="0";
+  clone.style.cssText += ";display:block!important;visibility:visible!important;position:relative!important;left:0!important;top:0!important;transform:none!important;width:210mm!important;height:297mm!important;min-height:297mm!important;margin:0!important;padding:15mm!important;box-sizing:border-box!important;background:#fff!important;box-shadow:none!important;";
 
   stage.appendChild(clone);
   document.body.appendChild(stage);
 
   try{
     await waitForImages(clone);
-    // Paksa layout dihitung ulang sebelum screenshot.
-    void clone.offsetHeight;
+    // Beri browser satu frame untuk menghitung ulang layout halaman hasil clone.
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    void clone.offsetWidth;
+
     return await html2canvas(clone,{
       scale:2,
       useCORS:true,
@@ -387,10 +380,14 @@ async function capturePdfPage(page){
       logging:false,
       imageTimeout:10000,
       removeContainer:true,
-      width:clone.offsetWidth,
-      height:clone.offsetHeight,
+      width:Math.round(clone.getBoundingClientRect().width),
+      height:Math.round(clone.getBoundingClientRect().height),
+      x:0,
+      y:0,
       scrollX:0,
-      scrollY:0
+      scrollY:0,
+      windowWidth:Math.round(clone.getBoundingClientRect().width),
+      windowHeight:Math.round(clone.getBoundingClientRect().height)
     });
   }finally{
     stage.remove();
@@ -399,33 +396,45 @@ async function capturePdfPage(page){
 
 async function createPdf(){
   const pages=await preparePdfPages();
+  if(!pages.length) throw new Error("Halaman PDF tidak ditemukan.");
+
   const {jsPDF}=window.jspdf;
   const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
+
+  // Render dan masukkan SETIAP halaman secara eksplisit.
   for(let i=0;i<pages.length;i++){
     const canvas=await capturePdfPage(pages[i]);
-    if(i) pdf.addPage();
     const imgData=canvas.toDataURL("image/jpeg",0.92);
-    pdf.addImage(imgData,"JPEG",0,0,210,297,"FAST");
+
+    if(i>0) pdf.addPage("a4","portrait");
+    pdf.setPage(i+1);
+    pdf.addImage(imgData,"JPEG",0,0,210,297,undefined,"FAST");
   }
+
+  // Pastikan jumlah halaman PDF sama persis dengan halaman preview.
+  while(pdf.getNumberOfPages()>pages.length) pdf.deletePage(pdf.getNumberOfPages());
   return pdf;
 }
 
 async function downloadPDF(){
-  showLoading(true,"Membuat PDF...");
-  try{
-    const pdf=await createPdf();
-    const filename=`${safeName(state.employee.nama)} - ${monthName(state.month)} ${CONFIG.YEAR}.pdf`;
-    pdf.save(filename);
-    const logged=await writeLog("PDF Diunduh");
-    $("#exportNote").textContent=`Dokumen ${filename} berhasil dibuat.${logged?" Aktivitas sudah tercatat di Log.":""}`;
-    toast(logged?"PDF berhasil diunduh dan dicatat di Log.":"PDF berhasil diunduh.");
-  }catch(e){
-    console.error("Ekspor PDF:",e);
-    toast(e.message||"PDF gagal dibuat. Coba lagi.");
-  }finally{showLoading(false)}
+  // Gunakan mesin print bawaan browser agar hasil PDF mengikuti persis
+  // layout preview dan seluruh halaman (halaman 1 dan 2) ikut tercetak.
+  // Fitur lain tidak diubah.
+  if(!state.employee || !state.month || !state.weeks.length){
+    toast("Data laporan belum lengkap.");
+    return;
+  }
+  showLoading(false);
+  await loadTTD();
+  buildPreview();
+  showStep("previewStep");
+  const note=$("#exportNote");
+  if(note) note.textContent="Di jendela cetak, pilih Printer: Simpan sebagai PDF lalu klik Simpan.";
+  setTimeout(()=>window.print(),150);
 }
 
 async function makePDFBlob(){
+  // Tetap dipertahankan untuk kompatibilitas fitur Bagikan yang sudah ada.
   const pdf=await createPdf();
   return {
     blob:pdf.output("blob"),
@@ -444,7 +453,6 @@ async function sharePDF(){
       files:[file]
     };
 
-    // Android/iPhone dan browser yang mendukung berbagi file: PDF langsung masuk menu Bagikan.
     if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
       await navigator.share(shareData);
       await writeLog("PDF Dibagikan");
@@ -452,25 +460,15 @@ async function sharePDF(){
       return;
     }
 
-    // Desktop/browser tanpa Web Share file: simpan PDF terlebih dahulu,
-    // lalu buka WhatsApp dengan keterangan agar pengguna tinggal melampirkan PDF.
-    const url=URL.createObjectURL(x.blob);
-    const a=document.createElement("a");
-    a.href=url;
-    a.download=x.filename;
-    a.style.display="none";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),30000);
-
-    const text=encodeURIComponent(`Laporan Aktifitas Pegawai\nNama: ${state.employee.nama}\nPeriode: ${monthName(state.month)} ${CONFIG.YEAR}\n\nPDF sudah disiapkan. Silakan lampirkan file PDF yang baru diunduh.`);
-    const waUrl=`https://wa.me/?text=${text}`;
-    const wa=window.open(waUrl,"_blank","noopener,noreferrer");
-    if(!wa) window.location.href=waUrl;
-
-    await writeLog("PDF Dibagikan");
-    toast("PDF berhasil dibuat dan disiapkan untuk dibagikan.");
+    // Browser desktop yang tidak mendukung Web Share file:
+    // gunakan print native sehingga PDF yang disimpan pengguna tetap
+    // memakai layout preview yang sama dan mencakup semua halaman.
+    showLoading(false);
+    buildPreview();
+    showStep("previewStep");
+    const note=$("#exportNote");
+    if(note) note.textContent="Pilih Printer: Simpan sebagai PDF untuk menyimpan dokumen, lalu bagikan file PDF tersebut.";
+    setTimeout(()=>window.print(),150);
   }catch(e){
     if(e.name!=="AbortError"){
       console.error("Bagikan PDF:",e);

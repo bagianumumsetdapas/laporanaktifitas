@@ -52,9 +52,72 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px}
 @media(max-width:760px){
   .app{width:min(100% - 18px,1160px);padding-top:9px}.topbar{border-radius:18px}.brand-subtitle{display:none}.hero-card{border-radius:23px}.form-grid,.week-grid{grid-template-columns:1fr}.full{grid-column:auto}.photos{grid-template-columns:1fr 1fr}.section-head{align-items:flex-start;flex-direction:column}.sticky-actions{align-items:stretch;flex-direction:column}.sticky-actions .btn{width:100%}.pdf-page{transform-origin:top center;width:210mm}.pdf-preview{overflow:auto;width:100%;align-items:flex-start}
 }
-@media print{
-  body{background:#fff}.app>header,.app>main>section:not(#previewStep),footer,.export-actions,.section-head{display:none!important}.pdf-preview{display:block}.pdf-page{box-shadow:none;margin:0;page-break-after:always}
+@page{
+  size:A4 portrait;
+  margin:0;
 }
+
+@media print{
+  html,body{
+    width:210mm!important;
+    min-width:210mm!important;
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+  }
+  body{
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+  .app{
+    width:210mm!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  .app>header,
+  .app>main>section:not(#previewStep),
+  footer,
+  .export-actions,
+  .section-head,
+  #exportNote{
+    display:none!important;
+  }
+  #previewStep{
+    display:block!important;
+    width:210mm!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  .pdf-preview{
+    display:block!important;
+    width:210mm!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  .pdf-page{
+    display:block!important;
+    width:210mm!important;
+    height:297mm!important;
+    min-height:297mm!important;
+    max-height:297mm!important;
+    margin:0!important;
+    padding:15mm!important;
+    box-sizing:border-box!important;
+    overflow:hidden!important;
+    box-shadow:none!important;
+    transform:none!important;
+    break-inside:avoid!important;
+    page-break-inside:avoid!important;
+    break-after:page!important;
+    page-break-after:always!important;
+  }
+  .pdf-page:last-child{
+    break-after:auto!important;
+    page-break-after:auto!important;
+  }
+}
+
 /* Logo dan PDF */
 .pdf-logo{background:transparent!important;box-shadow:none!important;border-radius:0!important}
 .pdf-logo img{width:18mm;height:18mm;object-fit:contain}
