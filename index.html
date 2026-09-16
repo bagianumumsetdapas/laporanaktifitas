@@ -2,43 +2,53 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#123b6d">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#6d28d9">
   <title>Laporan Aktifitas Pegawai</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-shell">
-    <header class="topbar">
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+  <div class="bg-grid"></div>
+
+  <div class="app">
+    <header class="topbar glass">
       <div class="brand">
-        <div class="brand-mark">LA</div>
+        <div class="brand-icon">LA</div>
         <div>
-          <h1>Laporan Aktifitas Pegawai</h1>
-          <p>Bagian Umum, Protokol dan Komunikasi Pimpinan</p>
+          <div class="brand-title">Laporan Aktifitas Pegawai</div>
+          <div class="brand-subtitle">Bagian Umum, Protokol dan Komunikasi Pimpinan</div>
         </div>
       </div>
       <button id="themeBtn" class="icon-btn" type="button" title="Ubah tema">☾</button>
     </header>
 
-    <main class="container">
-      <section id="startStep" class="card start-card">
-        <div class="eyebrow">PELAPORAN AKTIFITAS</div>
-        <h2>Susun laporan aktifitas pegawai</h2>
-        <p class="lead">Pilih identitas dan periode laporan. Data identitas akan diambil otomatis dari database pegawai.</p>
+    <main>
+      <section id="startStep" class="glass hero-card">
+        <div class="hero-copy">
+          <span class="pill">PELAPORAN AKTIFITAS • 2026</span>
+          <h1>Susun laporan pegawai dengan lebih <span>praktis.</span></h1>
+          <p class="hero-lead">Data identitas dibaca langsung dari Google Sheet. Foto hanya disimpan sementara di perangkat dan tidak diunggah ke server aplikasi.</p>
+        </div>
 
         <div class="notice">
-          <strong>⚠️ Disclaimer</strong>
-          <p>Aplikasi ini hanya sebagai tool / alat bantu untuk  memudahkan penyusunan dan pelaporan aktivitas pegawai. Dokumen yang dihasilkan tidak disimpan pada server. Jadi setelah selesai digunakan, silakan segera unduh, cetak, atau simpan PDF sesuai kebutuhan.</p>
+          <div class="notice-icon">i</div>
+          <div>
+            <strong>Disclaimer</strong>
+            <p>Aplikasi ini merupakan alat bantu untuk memudahkan proses penyusunan dan pelaporan aktifitas pegawai. Dokumen yang dihasilkan bukan merupakan media penyimpanan arsip resmi. Setelah laporan selesai digunakan, mohon segera mengunduh, mencetak, atau menyimpan dokumen PDF sesuai ketentuan administrasi yang berlaku.</p>
+          </div>
         </div>
 
         <div class="form-grid">
-          <label>
+          <label class="field">
             <span>Nama Pegawai</span>
             <select id="employeeSelect">
-              <option value="">Memuat data pegawai...</option>
+              <option value="">Memuat data dari Google Sheet...</option>
             </select>
           </label>
-          <label>
+
+          <label class="field">
             <span>Laporan Triwulan</span>
             <select id="quarterSelect">
               <option value="">Pilih triwulan</option>
@@ -46,7 +56,8 @@
               <option value="IV">Triwulan IV</option>
             </select>
           </label>
-          <label id="monthWrap" class="full">
+
+          <label id="monthWrap" class="field full">
             <span>Bulan Lapor</span>
             <select id="monthSelect" disabled>
               <option value="">Pilih triwulan terlebih dahulu</option>
@@ -58,33 +69,35 @@
         <div id="existingReport" class="existing-report hidden"></div>
 
         <div class="actions right">
-          <button id="continueBtn" class="btn primary" type="button" disabled>Lanjutkan <span>→</span></button>
+          <button id="continueBtn" class="btn primary" type="button" disabled>
+            Lanjutkan <span>→</span>
+          </button>
         </div>
       </section>
 
       <section id="reportStep" class="hidden">
-        <div class="step-head">
+        <div class="section-head">
           <div>
-            <div class="eyebrow">INPUT LAPORAN</div>
+            <span class="pill">INPUT LAPORAN</span>
             <h2 id="reportTitle">Laporan Aktifitas</h2>
             <p id="progressText">0 dari 4 minggu selesai</p>
           </div>
           <button id="backBtn" class="btn ghost" type="button">← Kembali</button>
         </div>
 
-        <div class="progress"><div id="progressBar"></div></div>
+        <div class="progress glass"><div id="progressBar"></div></div>
         <div id="weeks"></div>
 
-        <div class="sticky-actions">
+        <div class="sticky-actions glass">
           <span id="saveStatus" class="save-status">Draft tersimpan otomatis di perangkat</span>
           <button id="previewBtn" class="btn primary" type="button">Preview &amp; Export PDF</button>
         </div>
       </section>
 
       <section id="previewStep" class="hidden">
-        <div class="step-head">
+        <div class="section-head">
           <div>
-            <div class="eyebrow">PRATINJAU</div>
+            <span class="pill">PRATINJAU</span>
             <h2>Pratinjau dokumen</h2>
             <p>Periksa laporan sebelum diunduh atau dibagikan.</p>
           </div>
@@ -93,7 +106,7 @@
 
         <div id="pdfPreview" class="pdf-preview"></div>
 
-        <div class="export-actions">
+        <div class="export-actions glass">
           <button id="printBtn" class="btn secondary" type="button">🖨 Cetak</button>
           <button id="downloadBtn" class="btn primary" type="button">⬇ Download PDF</button>
           <button id="shareBtn" class="btn success" type="button">↗ Bagikan PDF</button>
@@ -103,7 +116,7 @@
       </section>
     </main>
 
-    <footer>Tool Laporan Aktifitas Pegawai • 2026</footer>
+    <footer>Laporan Aktifitas Pegawai • 2026</footer>
   </div>
 
   <div id="toast" class="toast"></div>
