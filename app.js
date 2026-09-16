@@ -6,7 +6,7 @@ const CONFIG = {
   UNIT: "Bagian Umum, Protokol dan Komunikasi Pimpinan",
   // URL Web App Apps Script untuk pencatatan Log.
   // Isi setelah Code.gs dideploy sebagai Web App.
-  LOG_API_URL: "https://script.google.com/macros/s/AKfycbyFd44Ra230wPktAsQ76N040fk6Vq4m1nh33BNAEP1OafwAcNUisTpaX5TR0xIPmIyr3w/exec"
+  LOG_API_URL: "PASTE_APPS_SCRIPT_WEB_APP_URL_HERE"
 };
 
 const $ = s => document.querySelector(s);
@@ -192,7 +192,7 @@ function renderWeeks(){
   updateProgress();
 }
 function photoBox(i,n,data){
-  return `<div class="photo-box">${data?`<img src="${data}" alt="Foto ${i+1}.${n}"><button class="photo-remove" type="button" data-i="${i}" data-n="${n}">×</button>`:`<div class="photo-empty"><b>Foto ${i+1}.${n}</b>Klik untuk memilih foto</div>`}<input class="photo-input" type="file" accept="image/*" capture="environment" data-i="${i}" data-n="${n}"></div>`;
+  return `<div class="photo-box">${data?`<img src="${data}" alt="Foto ${i+1}.${n}"><button class="photo-remove" type="button" data-i="${i}" data-n="${n}">×</button>`:`<div class="photo-empty"><b>Foto ${i+1}.${n}</b>Klik untuk memilih foto dari galeri</div>`}<input class="photo-input" type="file" accept="image/*" data-i="${i}" data-n="${n}"></div>`;
 }
 async function onPhoto(e){
   const file=e.target.files?.[0];if(!file)return;
