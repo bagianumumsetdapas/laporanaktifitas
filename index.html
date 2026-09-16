@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#123b6d">
+  <title>Laporan Aktifitas Pegawai</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">LA</div>
+        <div>
+          <h1>Laporan Aktifitas Pegawai</h1>
+          <p>Bagian Umum, Protokol dan Komunikasi Pimpinan</p>
+        </div>
+      </div>
+      <button id="themeBtn" class="icon-btn" type="button" title="Ubah tema">☾</button>
+    </header>
+
+    <main class="container">
+      <section id="startStep" class="card start-card">
+        <div class="eyebrow">PELAPORAN AKTIFITAS</div>
+        <h2>Susun laporan aktifitas pegawai</h2>
+        <p class="lead">Pilih identitas dan periode laporan. Data identitas akan diambil otomatis dari database pegawai.</p>
+
+        <div class="notice">
+          <strong>Disclaimer</strong>
+          <p>Aplikasi ini merupakan alat bantu untuk memudahkan proses penyusunan dan pelaporan aktifitas pegawai. Dokumen yang dihasilkan bukan merupakan media penyimpanan arsip resmi. Setelah laporan selesai digunakan, mohon segera mengunduh, mencetak, atau menyimpan dokumen PDF sesuai ketentuan administrasi yang berlaku.</p>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            <span>Nama Pegawai</span>
+            <select id="employeeSelect">
+              <option value="">Memuat data pegawai...</option>
+            </select>
+          </label>
+          <label>
+            <span>Laporan Triwulan</span>
+            <select id="quarterSelect">
+              <option value="">Pilih triwulan</option>
+              <option value="III">Triwulan III</option>
+              <option value="IV">Triwulan IV</option>
+            </select>
+          </label>
+          <label id="monthWrap" class="full">
+            <span>Bulan Lapor</span>
+            <select id="monthSelect" disabled>
+              <option value="">Pilih triwulan terlebih dahulu</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="employeeInfo" class="employee-info hidden"></div>
+        <div id="existingReport" class="existing-report hidden"></div>
+
+        <div class="actions right">
+          <button id="continueBtn" class="btn primary" type="button" disabled>Lanjutkan <span>→</span></button>
+        </div>
+      </section>
+
+      <section id="reportStep" class="hidden">
+        <div class="step-head">
+          <div>
+            <div class="eyebrow">INPUT LAPORAN</div>
+            <h2 id="reportTitle">Laporan Aktifitas</h2>
+            <p id="progressText">0 dari 4 minggu selesai</p>
+          </div>
+          <button id="backBtn" class="btn ghost" type="button">← Kembali</button>
+        </div>
+
+        <div class="progress"><div id="progressBar"></div></div>
+        <div id="weeks"></div>
+
+        <div class="sticky-actions">
+          <span id="saveStatus" class="save-status">Draft tersimpan otomatis di perangkat</span>
+          <button id="previewBtn" class="btn primary" type="button">Preview &amp; Export PDF</button>
+        </div>
+      </section>
+
+      <section id="previewStep" class="hidden">
+        <div class="step-head">
+          <div>
+            <div class="eyebrow">PRATINJAU</div>
+            <h2>Pratinjau dokumen</h2>
+            <p>Periksa laporan sebelum diunduh atau dibagikan.</p>
+          </div>
+          <button id="editBtn" class="btn ghost" type="button">← Edit Laporan</button>
+        </div>
+
+        <div id="pdfPreview" class="pdf-preview"></div>
+
+        <div class="export-actions">
+          <button id="printBtn" class="btn secondary" type="button">🖨 Cetak</button>
+          <button id="downloadBtn" class="btn primary" type="button">⬇ Download PDF</button>
+          <button id="shareBtn" class="btn success" type="button">↗ Bagikan PDF</button>
+          <button id="whatsappBtn" class="btn whatsapp" type="button">WhatsApp</button>
+        </div>
+        <p id="exportNote" class="muted center"></p>
+      </section>
+    </main>
+
+    <footer>Tool Laporan Aktifitas Pegawai • 2026</footer>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <div id="loading" class="loading hidden"><div class="spinner"></div><span>Memproses...</span></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
